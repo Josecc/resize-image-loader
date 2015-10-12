@@ -11,7 +11,8 @@
 //    require('resize-image?format=webp!./myImage.jpg');
 
 var debug = require('debug')('resize-image-loader');
-var gm = require('gm').subClass({ imageMagick: true });
+var lwip = require('lwip');
+var sizeOf = require('image-size');
 var Datauri = require('datauri');
 var fs = require('fs');
 var loaderUtils = require('loader-utils');
@@ -44,39 +45,24 @@ var queue = (function(q, c){
 
 function createPlaceholder(content, placeholder, ext, blur, files){
   return function(next){
-
-    var getSize = function(){
-      gm(content)
-        .size(function(err, _size){
-          if (err) {
-            return;
-          }
-          if (!_size) {
-            getSize();
-            return;
-          }
-          setPlaceholder(_size);
-      });
-    };
-
-    var setPlaceholder = function(size){
-      gm(content)
+    var source = sizeOf(content);
+    
+    lwip.open(content, source.type, function(err, image) {
+      image.batch()
         .resize(placeholder)
-        .toBuffer(ext, function(err, buf){
-          if (!buf) return;
-          debug("placeholder: " + JSON.stringify(size));
-          var uri = new Datauri().format('.'+ext, buf).content;
-          var blur =  "<svg xmlns='http://www.w3.org/2000/svg' width='100%' viewBox='0 0 " + size.width + " " + size.height + "'>" +
-                        "<defs><filter id='puppybits'><feGaussianBlur in='SourceGraphic' stdDeviation='" + defaultBlur + "'/></filter></defs>" +
-                        "<image width='100%' height='100%' xmlns:xlink='http://www.w3.org/1999/xlink' xlink:href='" + uri + "' filter='url(#puppybits)'></image>" +
-                      "</svg>";
+        .toBuffer(source.type, function(err, buffer) {
+          if (!buffer) return;
+          debug("placeholder: " + JSON.stringify(source));
+          var uri = new Datauri().format('.'+ext, buffer).content;
+          var blur =  "<svg xmlns='http://www.w3.org/2000/svg' width='100%' viewBox='0 0 " + source.width + " " + source.height + "'>" +
+          "<defs><filter id='puppybits'><feGaussianBlur in='SourceGraphic' stdDeviation='" + defaultBlur + "'/></filter></defs>" +
+          "<image width='100%' height='100%' xmlns:xlink='http://www.w3.org/1999/xlink' xlink:href='" + uri + "' filter='url(#puppybits)'></image>" +
+          "</svg>";
           var micro = new Datauri().format('.svg', new Buffer(blur, 'utf8')).content;
-          var response = {size:size, placeholder:micro};
+          var response = {size:{width: source.width, height: source.height}, placeholder:micro};
           next(response);
         });
-    };
-
-    getSize();
+    });
   };
 }
 
@@ -85,24 +71,26 @@ function createResponsiveImages(content, sizes, ext, files, emitFile){
     var count = 0;
     var images = [];
     var imgset = files.map(function(file, i){ return file + ' ' + sizes[i] + ' '; }).join(',');
+    var source = sizeOf(content);
 
     sizes.map(function(size, i){
       size = parseInt(size);
-      gm(content)
-        .resize(size)
-        .toBuffer(ext, function(err, buf){
-          if (buf){
-            debug('srcset: ' + imgset);
-            images[i] = buf;
-            emitFile(files[i], buf);
-          }
-
-
-          count++;
-          if (count >= files.length) {
-            var response = {srcset:imgset};
-            next(response);
-          }
+      lwip.open(content, source.type, function(err, image) {
+        image.batch()
+          .resize(size)
+          .toBuffer(source.type, function(err, buffer) {
+            if (buffer){
+              debug('srcset: ' + imgset);
+              images[i] = buffer;
+              emitFile(files[i], buffer);
+            }
+            
+            count++;
+            if (count >= files.length) {
+              var response = {srcset:imgset};
+              next(response);
+            }
+          });
       });
     });
   };
