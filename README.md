@@ -4,7 +4,7 @@
 
 **Images account for 58%<sup>[1][image-stats]</sup> of web pages. Hyper optimize your images to have massive improvement page load times.**
 
-Resize-image-loader will create responsive images using webpack and [gm](http://aheckmann.github.io/gm/) so only the most effecient image is downloaded for the user's device. Modern browser have an additional attibute on the `img` tag called `srcset`. If `srcset` is supported the browser will use the device's screensize and pixel density to determine the best image to download. Older browsers will default back to the normal `src` image.  This will greatly improve page load times and time to first render while reducing the cost for the user<sup>[2][cost-site]</sup>.
+Resize-image-loader will create responsive images using webpack and [lwip](https://github.com/EyalAr/lwip) so only the most effecient image is downloaded for the user's device. Modern browser have an additional attibute on the `img` tag called `srcset`. If `srcset` is supported the browser will use the device's screensize and pixel density to determine the best image to download. Older browsers will default back to the normal `src` image.  This will greatly improve page load times and time to first render while reducing the cost for the user<sup>[2][cost-site]</sup>.
 
 ## Sample Metrics
 Check out the test folder for a sample use case. Below is the render times with the full image vs a responsive one and a placeholder image.
@@ -81,10 +81,7 @@ var img = require('image-webpack!./myImage.jpg')
 
 ## Installation
 
-* Install ImageMagick before installing the resize-image-loader
-
 ```sh
-$ brew install ImageMagick // for mac
 $ npm install resize-image-loader --save-dev
 ```
 
